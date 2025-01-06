@@ -1,179 +1,247 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:sync_xy/providers/app_state_provider.dart';
+import 'package:sync_xy/models/task.dart';
 
 class TasksScreen extends StatelessWidget {
   const TasksScreen({super.key});
 
-  void _showDialog(BuildContext context) {
+  void _showDialog(BuildContext context, {Task? task, int? index}) {
+    final TextEditingController taskNameController = TextEditingController(text: task?.name ?? '');
+    final TextEditingController coinsController = TextEditingController(text: task?.coins.toString() ?? '');
+    final TextEditingController xpController = TextEditingController(text: task?.xp.toString() ?? '');
+    String taskType = task?.type ?? 'daily';
+    String penalty = task?.penalty ?? '0%';
+    DateTime? endDate = task?.endDate;
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Container(
-            width: double.infinity,
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Add Task',
-                      style: TextStyle(
-                        fontSize: 18,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: 'Task Name',
-                        prefixIcon: const Icon(Icons.task),
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('Type:'),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Radio(
-                                value: 'daily',
-                                groupValue: 'type',
-                                onChanged: (value) {},
-                              ),
-                              const Text('Daily'),
-                            ],
+                        const Text(
+                          'Add Task',
+                          style: TextStyle(
+                            fontSize: 18,
                           ),
                         ),
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Radio(
-                                value: 'once',
-                                groupValue: 'type',
-                                onChanged: (value) {},
-                              ),
-                              const Text('Once'),
-                            ],
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: taskNameController,
+                          decoration: InputDecoration(
+                            labelText: 'Task Name',
+                            prefixIcon: const Icon(Icons.task),
+                            border: const OutlineInputBorder(),
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              labelText: 'Coins',
-                              prefixIcon: const Icon(Icons.monetization_on),
-                              border: const OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              labelText: 'XP',
-                              prefixIcon: const Icon(Icons.star),
-                              border: const OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: 'End Date',
-                        prefixIcon: const Icon(Icons.calendar_today),
-                        border: const OutlineInputBorder(),
-                      ),
-                      onTap: () async {
-                        DateTime? pickedDate = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2101),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    const Text('Penalty:'),
-                    Column(
-                      children: [
+                        const SizedBox(height: 20),
                         Row(
                           children: [
+                            const Text('Type:'),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Row(
                                 children: [
-                                  Radio(
-                                    value: '0%',
-                                    groupValue: 'penalty',
-                                    onChanged: (value) {},
+                                  Radio<String>(
+                                    value: 'daily',
+                                    groupValue: taskType,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        taskType = value!;
+                                      });
+                                    },
                                   ),
-                                  const Text('0%'),
+                                  const Text('Daily'),
                                 ],
                               ),
                             ),
                             Expanded(
                               child: Row(
                                 children: [
-                                  Radio(
-                                    value: '100%',
-                                    groupValue: 'penalty',
-                                    onChanged: (value) {},
+                                  Radio<String>(
+                                    value: 'once',
+                                    groupValue: taskType,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        taskType = value!;
+                                      });
+                                    },
                                   ),
-                                  const Text('100%'),
-                                ],
-                              ),
-                            ),
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Radio(
-                                    value: '200%',
-                                    groupValue: 'penalty',
-                                    onChanged: (value) {},
-                                  ),
-                                  const Text('200%'),
+                                  const Text('Once'),
                                 ],
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: coinsController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Coins',
+                                  prefixIcon: const Icon(Icons.monetization_on),
+                                  border: const OutlineInputBorder(),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: xpController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'XP',
+                                  prefixIcon: const Icon(Icons.star),
+                                  border: const OutlineInputBorder(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: TextEditingController(
+                            text: endDate != null
+                                ? "${endDate?.toLocal()}".split(' ')[0]
+                                : '',
+                          ),
+                          decoration: InputDecoration(
+                            labelText: 'End Date',
+                            prefixIcon: const Icon(Icons.calendar_today),
+                            border: const OutlineInputBorder(),
+                          ),
+                          readOnly: true,
+                          onTap: () async {
+                            DateTime? pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: endDate ?? DateTime.now(),
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime(2101),
+                            );
+                            if (pickedDate != null) {
+                              setState(() {
+                                endDate = pickedDate;
+                              });
+                            }
                           },
-                          child: const Text('Cancel'),
                         ),
-                        const SizedBox(width: 10),
-                        ElevatedButton(
-                          onPressed: () {},
-                          child: const Text('Add'),
+                        const SizedBox(height: 20),
+                        const Text('Penalty:'),
+                        Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Radio<String>(
+                                        value: '0%',
+                                        groupValue: penalty,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            penalty = value!;
+                                          });
+                                        },
+                                      ),
+                                      const Text('0%'),
+                                    ],
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Radio<String>(
+                                        value: '100%',
+                                        groupValue: penalty,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            penalty = value!;
+                                          });
+                                        },
+                                      ),
+                                      const Text('100%'),
+                                    ],
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Radio<String>(
+                                        value: '200%',
+                                        groupValue: penalty,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            penalty = value!;
+                                          });
+                                        },
+                                      ),
+                                      const Text('200%'),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                              child: const Text('Cancel'),
+                            ),
+                            const SizedBox(width: 10),
+                            ElevatedButton(
+                              onPressed: () {
+                                if (taskNameController.text.isNotEmpty &&
+                                    coinsController.text.isNotEmpty &&
+                                    xpController.text.isNotEmpty &&
+                                    endDate != null) {
+                                  final newTask = Task(
+                                    name: taskNameController.text,
+                                    type: taskType,
+                                    coins: int.parse(coinsController.text),
+                                    xp: int.parse(xpController.text),
+                                    endDate: endDate!,
+                                    penalty: penalty,
+                                  );
+                                  if (task == null) {
+                                    Provider.of<AppStateProvider>(context, listen: false).addTask(newTask);
+                                  } else {
+                                    Provider.of<AppStateProvider>(context, listen: false).updateTask(index!, newTask);
+                                  }
+                                  Navigator.of(context).pop();
+                                }
+                              },
+                              child: const Text('Add'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -182,8 +250,84 @@ class TasksScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Text('Tasks Screen'),
+      body: Consumer<AppStateProvider>(
+        builder: (context, appState, child) {
+          return ListView.builder(
+            itemCount: appState.tasks.length,
+            itemBuilder: (context, index) {
+              final task = appState.tasks[index];
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.white),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.5),
+                      spreadRadius: 2,
+                      blurRadius: 5,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.task),
+                      title: Text(
+                        task.name,
+                        style: TextStyle(
+                          decoration: task.isCompleted ? TextDecoration.lineThrough : TextDecoration.none,
+                          color: task.isCompleted ? Colors.grey : Colors.black,
+                        ),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: task.isCompleted
+                                ? null
+                                : () {
+                                    _showDialog(context, task: task, index: index);
+                                  },
+                          ),
+                          Checkbox(
+                            value: task.isCompleted,
+                            onChanged: task.isCompleted
+                                ? null
+                                : (bool? value) {
+                                    appState.toggleTaskCompletion(index);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text('Task completed'),
+                                        action: SnackBarAction(
+                                          label: 'Undo',
+                                          onPressed: () {
+                                            appState.toggleTaskCompletion(index);
+                                          },
+                                        ),
+                                        duration: const Duration(seconds: 3),
+                                      ),
+                                    );
+                                  },
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (task.isCompleted)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.grey.withOpacity(0.5),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showDialog(context),

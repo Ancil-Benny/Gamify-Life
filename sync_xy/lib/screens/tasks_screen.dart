@@ -31,11 +31,24 @@ class TasksScreen extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          'Add Task',
-                          style: TextStyle(
-                            fontSize: 18,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Add Task',
+                              style: TextStyle(
+                                fontSize: 18,
+                              ),
+                            ),
+                            if (task != null)
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Color.fromARGB(255, 112, 73, 180)),
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  _showDeleteConfirmationDialog(context, index!);
+                                },
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 20),
                         TextField(
@@ -242,6 +255,33 @@ class TasksScreen extends StatelessWidget {
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  void _showDeleteConfirmationDialog(BuildContext context, int index) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Task'),
+          content: const Text('Are you sure you want to delete this task?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Provider.of<AppStateProvider>(context, listen: false).deleteTask(index);
+                Navigator.of(context).pop();
+              },
+              child: const Text('Delete'),
+            ),
+          ],
         );
       },
     );

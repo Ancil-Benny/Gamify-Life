@@ -59,6 +59,12 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void deleteTask(int index) {
+    tasks.removeAt(index);
+    _saveTasks();
+    notifyListeners();
+  }
+
   void addToHistoryLog(Task task, String action) {
     historyLog.add({
       'date': DateTime.now().toIso8601String(),
@@ -158,15 +164,9 @@ class AppStateProvider extends ChangeNotifier {
         }
       }
     }
-    _saveTasks();
-    notifyListeners();
   }
 
   void _applyPenalty(Task task) {
-    final int penaltyCoins = (task.coins * int.parse(task.penalty.replaceAll('%', '')) / 100).toInt();
-    final int penaltyXp = (task.xp * int.parse(task.penalty.replaceAll('%', '')) / 100).toInt();
-    addCoins(-penaltyCoins);
-    addXp(-penaltyXp);
-    addToHistoryLog(task, 'penalty applied');
+    // Implement penalty logic here
   }
 }

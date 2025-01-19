@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:sync_xy/models/task.dart';
+import 'package:sync_xy/models/note.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -11,11 +12,13 @@ class AppStateProvider extends ChangeNotifier {
   int xp = 0;
   int level = 1;
   List<Task> tasks = [];
+  List<Note> notes = [];
   List<Map<String, dynamic>> historyLog = [];
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
   AppStateProvider() {
     _loadTasks();
+    _loadNotes();
     _loadHistoryLog();
     _initializeNotifications();
     _scheduleDailyTaskCheck();
@@ -168,5 +171,40 @@ class AppStateProvider extends ChangeNotifier {
 
   void _applyPenalty(Task task) {
     // Implement penalty logic here
+  }
+
+  // Note management methods
+  void addNote(Note note) {
+    notes.add(note);
+    _saveNotes();
+    notifyListeners();
+  }
+
+  void updateNote(int index, Note newNote) {
+    notes[index] = newNote;
+    _saveNotes();
+    notifyListeners();
+  }
+
+  void deleteNote(int index) {
+    notes.removeAt(index);
+    _saveNotes();
+    notifyListeners();
+  }
+
+  Future<void> _saveNotes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String encodedData = jsonEncode(notes.map((note) => note.toJson()).toList());
+    await prefs.setString('notes', encodedData);
+  }
+
+  Future<void> _loadNotes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? encodedData = prefs.getString('notes');
+    if (encodedData != null) {
+      final List<dynamic> decodedData = jsonDecode(encodedData);
+      notes = decodedData.map((item) => Note.fromJson(item)).toList();
+      notifyListeners();
+    }
   }
 }

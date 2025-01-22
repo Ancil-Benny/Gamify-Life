@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:sync_xy/providers/app_state_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  void _showDialog(BuildContext context) {
+  void _showDeveloperSettingsDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -16,19 +18,23 @@ class SettingsScreen extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                Text('Add Setting', style: TextStyle(fontSize: 18)),
-                SizedBox(height: 20),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: 'Enter setting',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 20),
+              children: [
+                const Text('Developer Settings', style: TextStyle(fontSize: 18)),
+                const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: null,
-                  child: Text('Submit'),
+                  onPressed: () {
+                    Provider.of<AppStateProvider>(context, listen: false).scheduleDailyTaskCheck();
+                    debugPrint('Developer Settings: Scheduled daily task check');
+                  },
+                  child: const Text('Test Schedule Daily Task Check'),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    Provider.of<AppStateProvider>(context, listen: false).checkAndUpdateTasks();
+                    debugPrint('Developer Settings: Checked and updated tasks');
+                  },
+                  child: const Text('Check and Update Tasks'),
                 ),
               ],
             ),
@@ -40,14 +46,14 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Text('Settings Screen'),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showDialog(context),
-        child: const Icon(Icons.add),
-      ),
+    return ListView(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.developer_mode),
+          title: const Text('Developer Settings'),
+          onTap: () => _showDeveloperSettingsDialog(context),
+        ),
+      ],
     );
   }
 }

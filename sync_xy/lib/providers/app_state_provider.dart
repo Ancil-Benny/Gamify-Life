@@ -11,6 +11,14 @@ class AppStateProvider extends ChangeNotifier {
   int coins = 0;
   int xp = 0;
   int level = 1;
+  int accountBalance = 0;
+  int creditInterest = 5; // 5%
+  int lineOfCredit = 1000;
+  int creditTaken = 0;
+  int lineOfCreditUpgradeCost = 100;
+  int creditInterestUpgradeCost = 250;
+  int depositInterestUpgradeCost = 100;
+  int depositInterest = 0;
   List<Task> tasks = [];
   List<Note> notes = [];
   List<Map<String, dynamic>> historyLog = [];
@@ -21,7 +29,7 @@ class AppStateProvider extends ChangeNotifier {
     _loadNotes();
     _loadHistoryLog();
     _initializeNotifications();
-    _scheduleDailyTaskCheck();
+    scheduleDailyTaskCheck();
   }
 
   void addCoins(int value) {
@@ -117,7 +125,7 @@ class AppStateProvider extends ChangeNotifier {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
-  Future<void> _scheduleDailyTaskCheck() async {
+  Future<void> scheduleDailyTaskCheck() async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
       'daily_task_check',
       'Daily Task Check',
@@ -135,9 +143,10 @@ class AppStateProvider extends ChangeNotifier {
       _nextInstanceOfMidnight(),
       platformChannelSpecifics,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      androidScheduleMode: AndroidScheduleMode.exact,
+      androidScheduleMode: AndroidScheduleMode.inexact,
       matchDateTimeComponents: DateTimeComponents.time,
     );
+    debugPrint('Scheduled daily task check');
   }
 
   tz.TZDateTime _nextInstanceOfMidnight() {
@@ -151,6 +160,7 @@ class AppStateProvider extends ChangeNotifier {
 
   void checkAndUpdateTasks() {
     final DateTime now = DateTime.now();
+    debugPrint('Checking and updating tasks at $now');
     for (int i = 0; i < tasks.length; i++) {
       final task = tasks[i];
       if (task.type == 'once' && task.endDate.isBefore(now)) {
@@ -167,10 +177,69 @@ class AppStateProvider extends ChangeNotifier {
         }
       }
     }
+    _saveTasks();
   }
 
   void _applyPenalty(Task task) {
     // Implement penalty logic here
+    final penaltyPercentage = int.parse(task.penalty.replaceAll('%', ''));
+    final penaltyCoins = (task.coins * penaltyPercentage / 100).toInt();
+    final penaltyXp = (task.xp * penaltyPercentage / 100).toInt();
+    coins -= penaltyCoins;
+    xp -= penaltyXp;
+    notifyListeners();
+  }
+
+  // Bank-related methods
+  void deposit(int amount) {
+    if (amount <= coins) {
+      coins -= amount;
+      accountBalance += amount;
+      notifyListeners();
+    }
+  }
+
+  void withdraw(int amount) {
+    if (amount <= accountBalance) {
+      accountBalance -= amount;
+      coins += amount;
+      notifyListeners();
+    }
+  }
+
+  void takeCredit(int amount) {
+    if (amount <= lineOfCredit - creditTaken) {
+      creditTaken += amount;
+      coins += amount;
+      notifyListeners();
+    }
+  }
+
+  void increaseLineOfCredit() {
+    if (coins >= lineOfCreditUpgradeCost) {
+      coins -= lineOfCreditUpgradeCost;
+      lineOfCredit += 100;
+      lineOfCreditUpgradeCost *= 2;
+      notifyListeners();
+    }
+  }
+
+  void decreaseCreditInterest() {
+    if (creditInterest > 5 && coins >= creditInterestUpgradeCost) {
+      coins -= creditInterestUpgradeCost;
+      creditInterest -= 5;
+      creditInterestUpgradeCost *= 2;
+      notifyListeners();
+    }
+  }
+
+  void increaseDepositInterest() {
+    if (coins >= depositInterestUpgradeCost && depositInterest < 100) {
+      coins -= depositInterestUpgradeCost;
+      depositInterest += 1;
+      depositInterestUpgradeCost *= 2;
+      notifyListeners();
+    }
   }
 
   // Note management methods

@@ -7,6 +7,31 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+// Define the Reward model
+class Reward {
+  String title;
+  String description;
+  int cost;
+
+  Reward({
+    required this.title,
+    required this.description,
+    required this.cost,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'description': description,
+        'cost': cost,
+      };
+
+  factory Reward.fromJson(Map<String, dynamic> json) => Reward(
+        title: json['title'],
+        description: json['description'],
+        cost: json['cost'],
+      );
+}
+
 class AppStateProvider extends ChangeNotifier {
   int coins = 0;
   int xp = 0;
@@ -21,15 +46,73 @@ class AppStateProvider extends ChangeNotifier {
   int depositInterest = 0;
   List<Task> tasks = [];
   List<Note> notes = [];
+  List<Reward> rewards = []; // Rewards list
   List<Map<String, dynamic>> historyLog = [];
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
   AppStateProvider() {
     _loadTasks();
     _loadNotes();
+    _loadRewards(); // Load rewards
     _loadHistoryLog();
     _initializeNotifications();
     scheduleDailyTaskCheck();
+  }
+
+  // Add Reward
+  void addReward(String title, String description, int cost) {
+    rewards.add(Reward(title: title, description: description, cost: cost));
+    _saveRewards();
+    notifyListeners();
+  }
+
+  // Update Reward
+  void updateReward(int index, String title, String description, int cost) {
+    if (index >= 0 && index < rewards.length) {
+      rewards[index].title = title;
+      rewards[index].description = description;
+      rewards[index].cost = cost;
+      _saveRewards();
+      notifyListeners();
+    }
+  }
+
+  // Buy Reward
+  void buyReward(int index) {
+    Reward reward = rewards[index];
+    if (coins >= reward.cost) {
+      coins -= reward.cost;
+      addToHistoryLog(
+        Task(
+          name: 'Purchased Reward: ${reward.title}',
+          coins: reward.cost,
+          xp: 0,
+          type: 'once',
+          endDate: DateTime.now(),
+          penalty: '0%',
+        ),
+        'purchase',
+      );
+      notifyListeners();
+    }
+  }
+
+  // Save Rewards
+  Future<void> _saveRewards() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String encodedData = jsonEncode(rewards.map((reward) => reward.toJson()).toList());
+    await prefs.setString('rewards', encodedData);
+  }
+
+  // Load Rewards
+  Future<void> _loadRewards() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? encodedData = prefs.getString('rewards');
+    if (encodedData != null) {
+      final List<dynamic> decodedData = jsonDecode(encodedData);
+      rewards = decodedData.map((item) => Reward.fromJson(item)).toList();
+      notifyListeners();
+    }
   }
 
   void addCoins(int value) {
@@ -208,7 +291,7 @@ class AppStateProvider extends ChangeNotifier {
   }
 
   void takeCredit(int amount) {
-    if (amount <= lineOfCredit - creditTaken) {
+    if (amount <= (lineOfCredit - creditTaken)) {
       creditTaken += amount;
       coins += amount;
       notifyListeners();

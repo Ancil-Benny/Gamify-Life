@@ -32,7 +32,7 @@ class Reward {
       );
 }
 
-class AppStateProvider extends ChangeNotifier {
+class AppStateProvider with ChangeNotifier {
   int coins = 0;
   int xp = 0;
   int level = 1;
@@ -49,14 +49,43 @@ class AppStateProvider extends ChangeNotifier {
   List<Reward> rewards = []; // Rewards list
   List<Map<String, dynamic>> historyLog = [];
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  DateTime lastCheckedDate = DateTime.now();
+  final String lastCheckedKey = 'lastCheckedDate';
+
+  // Keys for SharedPreferences
+  final String coinsKey = 'coins';
+  final String xpKey = 'xp';
+  final String levelKey = 'level';
 
   AppStateProvider() {
-    _loadTasks();
-    _loadNotes();
-    _loadRewards(); // Load rewards
-    _loadHistoryLog();
-    _initializeNotifications();
-    scheduleDailyTaskCheck();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _loadTasks();
+    await _loadNotes();
+    await _loadRewards();
+    await _loadHistoryLog();
+    await _loadLastCheckedDate();
+    await _loadUserData(); // Ensure user data is loaded before checking tasks
+    checkAndUpdateTasks();
+    await _saveLastCheckedDate(); // Await asynchronous save
+    notifyListeners();
+  }
+
+  Future<void> _loadLastCheckedDate() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? lastCheckedString = prefs.getString(lastCheckedKey);
+    if (lastCheckedString != null) {
+      lastCheckedDate = DateTime.parse(lastCheckedString);
+    } else {
+      lastCheckedDate = DateTime.now();
+    }
+  }
+
+  Future<void> _saveLastCheckedDate() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(lastCheckedKey, DateTime.now().toIso8601String());
   }
 
   // Add Reward
@@ -115,18 +144,39 @@ class AppStateProvider extends ChangeNotifier {
     }
   }
 
+  // **Methods to Save and Load Coins, XP, Level**
+
+  Future<void> _saveUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(coinsKey, coins);
+    await prefs.setInt(xpKey, xp);
+    await prefs.setInt(levelKey, level);
+  }
+
+  Future<void> _loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    coins = prefs.getInt(coinsKey) ?? 0;
+    xp = prefs.getInt(xpKey) ?? 0;
+    level = prefs.getInt(levelKey) ?? 1;
+  }
+
+  // **Updating Methods to Save User Data After Changes**
+
   void addCoins(int value) {
     coins += value;
+    _saveUserData();
     notifyListeners();
   }
 
   void addXp(int value) {
     xp += value;
+    _saveUserData();
     notifyListeners();
   }
 
   void levelUp() {
     level += 1;
+    _saveUserData();
     notifyListeners();
   }
 
@@ -142,12 +192,14 @@ class AppStateProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // **Ensure Task Completion Also Saves User Data**
+
   void toggleTaskCompletion(int index) {
     tasks[index].toggleCompletion();
     if (tasks[index].isCompleted) {
       addCoins(tasks[index].coins);
       addXp(tasks[index].xp);
-      addToHistoryLog(tasks[index], 'completed');
+      addToHistoryLog(tasks[index], 'Task Completed');
     }
     _saveTasks();
     notifyListeners();
@@ -162,7 +214,7 @@ class AppStateProvider extends ChangeNotifier {
   void addToHistoryLog(Task task, String action) {
     historyLog.add({
       'date': DateTime.now().toIso8601String(),
-      'name': task.name,
+      'name': task.name, // Ensure this field is correctly populated
       'coins': task.coins,
       'xp': task.xp,
       'action': action,
@@ -243,34 +295,105 @@ class AppStateProvider extends ChangeNotifier {
 
   void checkAndUpdateTasks() {
     final DateTime now = DateTime.now();
-    debugPrint('Checking and updating tasks at $now');
-    for (int i = 0; i < tasks.length; i++) {
-      final task = tasks[i];
-      if (task.type == 'once' && task.endDate.isBefore(now)) {
-        if (!task.isCompleted) {
-          _applyPenalty(task);
-        }
-        tasks.removeAt(i);
-        i--;
-      } else if (task.type == 'daily') {
-        if (task.isCompleted) {
+    final int daysPassed = now.difference(lastCheckedDate).inDays;
+    if (daysPassed <= 0) return; // No days passed, no action needed
+
+    bool tasksUpdated = false;
+
+    for (int i = tasks.length - 1; i >= 0; i--) {
+      final Task task = tasks[i];
+      if (now.isAfter(task.endDate)) {
+        if (task.type == 'once') {
+          if (!task.isCompleted) {
+            _applyPenalty(task, 1);
+            _logHistory(task, 1, 'Penalty applied for once task overdue');
+          }
+          tasks.removeAt(i);
+          tasksUpdated = true;
+        } else if (task.type == 'daily') {
+          int overdueDays = now.difference(task.endDate).inDays;
+          overdueDays = overdueDays > daysPassed ? daysPassed : overdueDays;
+          if (!task.isCompleted) {
+            _applyPenalty(task, overdueDays);
+            _logHistory(task, overdueDays, 'Penalty applied for $overdueDays day(s) overdue');
+          }
+          // Reset task state
           task.isCompleted = false;
-        } else {
-          _applyPenalty(task);
+          // Update end date to today
+          task.endDate = now;
+          tasksUpdated = true;
         }
       }
     }
-    _saveTasks();
+
+    if (tasksUpdated) {
+      _saveTasks();
+      notifyListeners();
+    }
   }
 
-  void _applyPenalty(Task task) {
-    // Implement penalty logic here
-    final penaltyPercentage = int.parse(task.penalty.replaceAll('%', ''));
-    final penaltyCoins = (task.coins * penaltyPercentage / 100).toInt();
-    final penaltyXp = (task.xp * penaltyPercentage / 100).toInt();
-    coins -= penaltyCoins;
-    xp -= penaltyXp;
+  // **Ensure Penalty Application Also Saves User Data**
+
+  void _applyPenalty(Task task, int days) {
+    double penaltyRate = double.parse(task.penalty.replaceAll('%', '')) / 100;
+    int penaltyCoins = (task.coins * penaltyRate * days).toInt();
+    int penaltyXP = (task.xp * penaltyRate * days).toInt();
+
+    coins = (coins - penaltyCoins) < 0 ? 0 : (coins - penaltyCoins);
+    xp = (xp - penaltyXP) < 0 ? 0 : (xp - penaltyXP);
+
+    _saveUserData();
+
+    addToHistoryLog(task, 'Penalty applied: -$penaltyCoins coins, -$penaltyXP XP for $days day(s) overdue');
+  }
+
+  void _logHistory(Task task, int days, String action) {
+    historyLog.add({
+      'date': DateTime.now().toIso8601String(),
+      'task': task.name,
+      'days': days,
+      'action': action,
+    });
+    _saveHistoryLog();
+    // Notify user
+    // Assuming you have access to BuildContext or use another method
+  }
+
+  void resetTasks() {
+    DateTime now = DateTime.now();
+    for (int i = tasks.length - 1; i >= 0; i--) {
+      Task task = tasks[i];
+      if (isNextDay(task.endDate, now)) {
+        if (task.type == 'once') {
+          if (!task.isCompleted) {
+            applyPenalty(task);
+          }
+          tasks.removeAt(i);
+        } else if (task.type == 'daily') {
+          if (!task.isCompleted) {
+            applyPenalty(task);
+          } else {
+            task.isCompleted = false;
+          }
+          task.endDate = now;
+        }
+        _saveTasks();
+      }
+    }
     notifyListeners();
+  }
+
+  bool isNextDay(DateTime taskDate, DateTime currentDate) {
+    return taskDate.day != currentDate.day ||
+           taskDate.month != currentDate.month ||
+           taskDate.year != currentDate.year;
+  }
+
+  void applyPenalty(Task task) {
+    double penaltyRate = double.parse(task.penalty.replaceAll('%', '')) / 100;
+    coins -= (task.coins * penaltyRate).toInt();
+    xp -= (task.xp * penaltyRate).toInt();
+    addToHistoryLog(task, 'penalty');
   }
 
   // Bank-related methods

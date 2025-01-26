@@ -296,73 +296,53 @@ class TasksScreen extends StatelessWidget {
             itemCount: appState.tasks.length,
             itemBuilder: (context, index) {
               final task = appState.tasks[index];
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: Colors.white),
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.5),
-                      spreadRadius: 2,
-                      blurRadius: 5,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+              return Card(
+                elevation: 2, // Reduced shadow
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Stack(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.task),
-                      title: Text(
-                        task.name,
-                        style: TextStyle(
-                          decoration: task.isCompleted ? TextDecoration.lineThrough : TextDecoration.none,
-                          color: task.isCompleted ? Colors.grey : Colors.black,
-                        ),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit),
-                            onPressed: task.isCompleted
-                                ? null
-                                : () {
-                                    _showDialog(context, task: task, index: index);
-                                  },
-                          ),
-                          Checkbox(
-                            value: task.isCompleted,
-                            onChanged: task.isCompleted
-                                ? null
-                                : (bool? value) {
-                                    appState.toggleTaskCompletion(index);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: const Text('Task completed'),
-                                        action: SnackBarAction(
-                                          label: 'Undo',
-                                          onPressed: () {
-                                            appState.toggleTaskCompletion(index);
-                                          },
-                                        ),
-                                        duration: const Duration(seconds: 3),
-                                      ),
-                                    );
-                                  },
-                          ),
-                        ],
-                      ),
+                child: ListTile(
+                  leading: const Icon(Icons.task),
+                  title: Text(
+                    task.name,
+                    style: TextStyle(
+                      decoration: task.isCompleted ? TextDecoration.lineThrough : TextDecoration.none,
+                      color: task.isCompleted ? Colors.grey : Colors.black,
                     ),
-                    if (task.isCompleted)
-                      Positioned.fill(
-                        child: Container(
-                          color: Colors.grey.withOpacity(0.5),
-                        ),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: task.isCompleted
+                            ? null
+                            : () {
+                                _showDialog(context, task: task, index: index);
+                              },
                       ),
-                  ],
+                      Checkbox(
+                        value: task.isCompleted,
+                        onChanged: task.isCompleted
+                            ? null
+                            : (bool? value) {
+                                appState.toggleTaskCompletion(index);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text('Task completed'),
+                                    action: SnackBarAction(
+                                      label: 'Undo',
+                                      onPressed: () {
+                                        appState.toggleTaskCompletion(index);
+                                      },
+                                    ),
+                                    duration: const Duration(seconds: 3),
+                                  ),
+                                );
+                              },
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

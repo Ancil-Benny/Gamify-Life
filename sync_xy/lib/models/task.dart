@@ -1,10 +1,9 @@
-
 class Task {
   final String name;
   final String type;
   final int coins;
   final int xp;
-  final DateTime endDate;
+  DateTime endDate; // Changed from final to non-final
   final String penalty;
   bool isCompleted;
 

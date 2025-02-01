@@ -33,9 +33,9 @@ class Reward {
 }
 
 class AppStateProvider with ChangeNotifier {
-  int coins = 0;
-  int xp = 0;
-  int level = 1;
+  int _coins = 0;
+  int _xp = 0;
+  int _level = 1;
   int accountBalance = 0;
   int creditInterest = 5; // 5%
   int lineOfCredit = 1000;
@@ -44,10 +44,10 @@ class AppStateProvider with ChangeNotifier {
   int creditInterestUpgradeCost = 250;
   int depositInterestUpgradeCost = 100;
   int depositInterest = 0;
-  List<Task> tasks = [];
+  List<Task> _tasks = [];
   List<Note> notes = [];
-  List<Reward> rewards = []; // Rewards list
-  List<Map<String, dynamic>> historyLog = [];
+  List<Reward> _rewards = []; // Rewards list
+  List<Map<String, dynamic>> _historyLog = [];
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   DateTime lastCheckedDate = DateTime.now();
   final String lastCheckedKey = 'lastCheckedDate';
@@ -56,6 +56,60 @@ class AppStateProvider with ChangeNotifier {
   final String coinsKey = 'coins';
   final String xpKey = 'xp';
   final String levelKey = 'level';
+
+  ThemeMode _themeMode = ThemeMode.system;
+
+  ThemeMode get themeMode => _themeMode;
+  List<Task> get tasks => _tasks;
+  List<Reward> get rewards => _rewards;
+  int get coins => _coins;
+  int get xp => _xp;
+  int get level => _level;
+  List<Map<String, dynamic>> get historyLog => _historyLog;
+
+  void setThemeMode(ThemeMode themeMode) {
+    _themeMode = themeMode;
+    notifyListeners();
+  }
+
+  void resetHistoryLog() {
+    _historyLog.clear();
+    _saveHistoryLog();
+    notifyListeners();
+  }
+
+  void deleteAllTasks() {
+    _tasks.clear();
+    _saveTasks();
+    notifyListeners();
+  }
+
+  void deleteRewards() {
+    _rewards.clear();
+    _saveRewards();
+    notifyListeners();
+  }
+
+  void resetCoins() {
+    _coins = 0;
+    _saveUserData();
+    notifyListeners();
+  }
+
+  void resetXPAndLevel() {
+    _xp = 0;
+    _level = 1;
+    _saveUserData();
+    notifyListeners();
+  }
+
+  void resetAll() {
+    resetHistoryLog();
+    deleteAllTasks();
+    deleteRewards();
+    resetCoins();
+    resetXPAndLevel();
+  }
 
   AppStateProvider() {
     _initialize();
@@ -67,9 +121,9 @@ class AppStateProvider with ChangeNotifier {
     await _loadRewards();
     await _loadHistoryLog();
     await _loadLastCheckedDate();
-    await _loadUserData(); // Ensure user data is loaded before checking tasks
+    await _loadUserData(); 
     checkAndUpdateTasks();
-    await _saveLastCheckedDate(); // Await asynchronous save
+    await _saveLastCheckedDate(); 
     notifyListeners();
   }
 
@@ -90,17 +144,17 @@ class AppStateProvider with ChangeNotifier {
 
   // Add Reward
   void addReward(String title, String description, int cost) {
-    rewards.add(Reward(title: title, description: description, cost: cost));
+    _rewards.add(Reward(title: title, description: description, cost: cost));
     _saveRewards();
     notifyListeners();
   }
 
   // Update Reward
   void updateReward(int index, String title, String description, int cost) {
-    if (index >= 0 && index < rewards.length) {
-      rewards[index].title = title;
-      rewards[index].description = description;
-      rewards[index].cost = cost;
+    if (index >= 0 && index < _rewards.length) {
+      _rewards[index].title = title;
+      _rewards[index].description = description;
+      _rewards[index].cost = cost;
       _saveRewards();
       notifyListeners();
     }
@@ -108,9 +162,9 @@ class AppStateProvider with ChangeNotifier {
 
   // Buy Reward
   void buyReward(int index) {
-    Reward reward = rewards[index];
-    if (coins >= reward.cost) {
-      coins -= reward.cost;
+    Reward reward = _rewards[index];
+    if (_coins >= reward.cost) {
+      _coins -= reward.cost;
       addToHistoryLog(
         Task(
           name: 'Purchased Reward: ${reward.title}',
@@ -129,7 +183,7 @@ class AppStateProvider with ChangeNotifier {
   // Save Rewards
   Future<void> _saveRewards() async {
     final prefs = await SharedPreferences.getInstance();
-    final String encodedData = jsonEncode(rewards.map((reward) => reward.toJson()).toList());
+    final String encodedData = jsonEncode(_rewards.map((reward) => reward.toJson()).toList());
     await prefs.setString('rewards', encodedData);
   }
 
@@ -139,7 +193,7 @@ class AppStateProvider with ChangeNotifier {
     final String? encodedData = prefs.getString('rewards');
     if (encodedData != null) {
       final List<dynamic> decodedData = jsonDecode(encodedData);
-      rewards = decodedData.map((item) => Reward.fromJson(item)).toList();
+      _rewards = decodedData.map((item) => Reward.fromJson(item)).toList();
       notifyListeners();
     }
   }
@@ -148,46 +202,46 @@ class AppStateProvider with ChangeNotifier {
 
   Future<void> _saveUserData() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(coinsKey, coins);
-    await prefs.setInt(xpKey, xp);
-    await prefs.setInt(levelKey, level);
+    await prefs.setInt(coinsKey, _coins);
+    await prefs.setInt(xpKey, _xp);
+    await prefs.setInt(levelKey, _level);
   }
 
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
-    coins = prefs.getInt(coinsKey) ?? 0;
-    xp = prefs.getInt(xpKey) ?? 0;
-    level = prefs.getInt(levelKey) ?? 1;
+    _coins = prefs.getInt(coinsKey) ?? 0;
+    _xp = prefs.getInt(xpKey) ?? 0;
+    _level = prefs.getInt(levelKey) ?? 1;
   }
 
   // **Updating Methods to Save User Data After Changes**
 
   void addCoins(int value) {
-    coins += value;
+    _coins += value;
     _saveUserData();
     notifyListeners();
   }
 
   void addXp(int value) {
-    xp += value;
+    _xp += value;
     _saveUserData();
     notifyListeners();
   }
 
   void levelUp() {
-    level += 1;
+    _level += 1;
     _saveUserData();
     notifyListeners();
   }
 
   void addTask(Task task) {
-    tasks.add(task);
+    _tasks.add(task);
     _saveTasks();
     notifyListeners();
   }
 
   void updateTask(int index, Task newTask) {
-    tasks[index] = newTask;
+    _tasks[index] = newTask;
     _saveTasks();
     notifyListeners();
   }
@@ -195,24 +249,24 @@ class AppStateProvider with ChangeNotifier {
   // **Ensure Task Completion Also Saves User Data**
 
   void toggleTaskCompletion(int index) {
-    tasks[index].toggleCompletion();
-    if (tasks[index].isCompleted) {
-      addCoins(tasks[index].coins);
-      addXp(tasks[index].xp);
-      addToHistoryLog(tasks[index], 'Task Completed');
+    _tasks[index].toggleCompletion();
+    if (_tasks[index].isCompleted) {
+      addCoins(_tasks[index].coins);
+      addXp(_tasks[index].xp);
+      addToHistoryLog(_tasks[index], 'Task Completed');
     }
     _saveTasks();
     notifyListeners();
   }
 
   void deleteTask(int index) {
-    tasks.removeAt(index);
+    _tasks.removeAt(index);
     _saveTasks();
     notifyListeners();
   }
 
   void addToHistoryLog(Task task, String action) {
-    historyLog.add({
+    _historyLog.add({
       'date': DateTime.now().toIso8601String(),
       'name': task.name, // Ensure this field is correctly populated
       'coins': task.coins,
@@ -224,7 +278,7 @@ class AppStateProvider with ChangeNotifier {
 
   Future<void> _saveTasks() async {
     final prefs = await SharedPreferences.getInstance();
-    final String encodedData = jsonEncode(tasks.map((task) => task.toJson()).toList());
+    final String encodedData = jsonEncode(_tasks.map((task) => task.toJson()).toList());
     await prefs.setString('tasks', encodedData);
   }
 
@@ -233,14 +287,14 @@ class AppStateProvider with ChangeNotifier {
     final String? encodedData = prefs.getString('tasks');
     if (encodedData != null) {
       final List<dynamic> decodedData = jsonDecode(encodedData);
-      tasks = decodedData.map((item) => Task.fromJson(item)).toList();
+      _tasks = decodedData.map((item) => Task.fromJson(item)).toList();
       notifyListeners();
     }
   }
 
   Future<void> _saveHistoryLog() async {
     final prefs = await SharedPreferences.getInstance();
-    final String encodedData = jsonEncode(historyLog);
+    final String encodedData = jsonEncode(_historyLog);
     await prefs.setString('historyLog', encodedData);
   }
 
@@ -248,7 +302,7 @@ class AppStateProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final String? encodedData = prefs.getString('historyLog');
     if (encodedData != null) {
-      historyLog = List<Map<String, dynamic>>.from(jsonDecode(encodedData));
+      _historyLog = List<Map<String, dynamic>>.from(jsonDecode(encodedData));
       notifyListeners();
     }
   }
@@ -300,15 +354,15 @@ class AppStateProvider with ChangeNotifier {
 
     bool tasksUpdated = false;
 
-    for (int i = tasks.length - 1; i >= 0; i--) {
-      final Task task = tasks[i];
+    for (int i = _tasks.length - 1; i >= 0; i--) {
+      final Task task = _tasks[i];
       if (now.isAfter(task.endDate)) {
         if (task.type == 'once') {
           if (!task.isCompleted) {
             _applyPenalty(task, 1);
             _logHistory(task, 1, 'Penalty applied for once task overdue');
           }
-          tasks.removeAt(i);
+          _tasks.removeAt(i);
           tasksUpdated = true;
         } else if (task.type == 'daily') {
           int overdueDays = now.difference(task.endDate).inDays;
@@ -339,8 +393,8 @@ class AppStateProvider with ChangeNotifier {
     int penaltyCoins = (task.coins * penaltyRate * days).toInt();
     int penaltyXP = (task.xp * penaltyRate * days).toInt();
 
-    coins = (coins - penaltyCoins) < 0 ? 0 : (coins - penaltyCoins);
-    xp = (xp - penaltyXP) < 0 ? 0 : (xp - penaltyXP);
+    _coins = (_coins - penaltyCoins) < 0 ? 0 : (_coins - penaltyCoins);
+    _xp = (_xp - penaltyXP) < 0 ? 0 : (_xp - penaltyXP);
 
     _saveUserData();
 
@@ -348,7 +402,7 @@ class AppStateProvider with ChangeNotifier {
   }
 
   void _logHistory(Task task, int days, String action) {
-    historyLog.add({
+    _historyLog.add({
       'date': DateTime.now().toIso8601String(),
       'task': task.name,
       'days': days,
@@ -361,14 +415,14 @@ class AppStateProvider with ChangeNotifier {
 
   void resetTasks() {
     DateTime now = DateTime.now();
-    for (int i = tasks.length - 1; i >= 0; i--) {
-      Task task = tasks[i];
+    for (int i = _tasks.length - 1; i >= 0; i--) {
+      Task task = _tasks[i];
       if (isNextDay(task.endDate, now)) {
         if (task.type == 'once') {
           if (!task.isCompleted) {
             applyPenalty(task);
           }
-          tasks.removeAt(i);
+          _tasks.removeAt(i);
         } else if (task.type == 'daily') {
           if (!task.isCompleted) {
             applyPenalty(task);
@@ -391,15 +445,15 @@ class AppStateProvider with ChangeNotifier {
 
   void applyPenalty(Task task) {
     double penaltyRate = double.parse(task.penalty.replaceAll('%', '')) / 100;
-    coins -= (task.coins * penaltyRate).toInt();
-    xp -= (task.xp * penaltyRate).toInt();
+    _coins -= (task.coins * penaltyRate).toInt();
+    _xp -= (task.xp * penaltyRate).toInt();
     addToHistoryLog(task, 'penalty');
   }
 
   // Bank-related methods
   void deposit(int amount) {
-    if (amount <= coins) {
-      coins -= amount;
+    if (amount <= _coins) {
+      _coins -= amount;
       accountBalance += amount;
       notifyListeners();
     }
@@ -408,7 +462,7 @@ class AppStateProvider with ChangeNotifier {
   void withdraw(int amount) {
     if (amount <= accountBalance) {
       accountBalance -= amount;
-      coins += amount;
+      _coins += amount;
       notifyListeners();
     }
   }
@@ -416,14 +470,14 @@ class AppStateProvider with ChangeNotifier {
   void takeCredit(int amount) {
     if (amount <= (lineOfCredit - creditTaken)) {
       creditTaken += amount;
-      coins += amount;
+      _coins += amount;
       notifyListeners();
     }
   }
 
   void increaseLineOfCredit() {
-    if (coins >= lineOfCreditUpgradeCost) {
-      coins -= lineOfCreditUpgradeCost;
+    if (_coins >= lineOfCreditUpgradeCost) {
+      _coins -= lineOfCreditUpgradeCost;
       lineOfCredit += 100;
       lineOfCreditUpgradeCost *= 2;
       notifyListeners();
@@ -431,8 +485,8 @@ class AppStateProvider with ChangeNotifier {
   }
 
   void decreaseCreditInterest() {
-    if (creditInterest > 5 && coins >= creditInterestUpgradeCost) {
-      coins -= creditInterestUpgradeCost;
+    if (creditInterest > 5 && _coins >= creditInterestUpgradeCost) {
+      _coins -= creditInterestUpgradeCost;
       creditInterest -= 5;
       creditInterestUpgradeCost *= 2;
       notifyListeners();
@@ -440,8 +494,8 @@ class AppStateProvider with ChangeNotifier {
   }
 
   void increaseDepositInterest() {
-    if (coins >= depositInterestUpgradeCost && depositInterest < 100) {
-      coins -= depositInterestUpgradeCost;
+    if (_coins >= depositInterestUpgradeCost && depositInterest < 100) {
+      _coins -= depositInterestUpgradeCost;
       depositInterest += 1;
       depositInterestUpgradeCost *= 2;
       notifyListeners();

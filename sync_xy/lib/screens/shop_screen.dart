@@ -403,13 +403,24 @@ class ShopScreen extends StatelessWidget {
                       return Card(
                         child: ListTile(
                           leading: const Icon(Icons.redeem, color: Colors.purple),
-                          title: Text(reward.title),
-                          subtitle: Text('Cost: ${reward.cost} coins'),
+                          title: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(reward.title),
+                              Row(
+                                children: [
+                                  const Icon(Icons.monetization_on, color: Colors.amber),
+                                  const SizedBox(width: 5),
+                                  Text('${reward.cost}'),
+                                ],
+                              ),
+                            ],
+                          ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.blue),
+                                icon: const Icon(Icons.edit, color: Colors.grey), // Set edit icon color to grey
                                 onPressed: () {
                                   _showCreateOrEditRewardDialog(context, index: index);
                                 },
@@ -451,7 +462,7 @@ class ShopScreen extends StatelessWidget {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(title),
-          content: Text(content),
+          content: Text(content, style: const TextStyle(color: Colors.black)), // Set text color to black
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -514,28 +525,19 @@ class ShopScreen extends StatelessWidget {
               // Open ATM Section
               Row(
                 children: [
-                  ElevatedButton.icon(
-                    onPressed: () => _showATMDialog(context),
-                    icon: const Icon(Icons.account_balance),
-                    label: const Text('Open ATM'),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: Size(MediaQuery.of(context).size.width * 0.6, 50),
-                    ),
-                  ),
-                  const Spacer(),
-                  Row(
-                    children: [
-                      const Icon(Icons.monetization_on, color: Colors.amber),
-                      const SizedBox(width: 5),
-                      Consumer<AppStateProvider>(
-                        builder: (context, appState, child) {
-                          return Text('${appState.coins}');
-                        },
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showATMDialog(context),
+                      icon: const Icon(Icons.account_balance),
+                      label: const Text('Open ATM'),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: Size(MediaQuery.of(context).size.width, 50), // Full width button
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
+              const SizedBox(height: 20),
               // Rewards Section
               _buildRewardsSection(context),
               // Add other ShopScreen content here

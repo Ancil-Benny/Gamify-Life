@@ -27,17 +27,29 @@ class PlanScreen extends StatelessWidget {
                 const SizedBox(height: 20),
                 TextField(
                   controller: titleController,
-                  decoration: const InputDecoration(
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                  ),
+                  decoration: InputDecoration(
                     labelText: 'Title',
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                    ),
+                    border: const OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 10),
                 TextField(
                   controller: contentController,
-                  decoration: const InputDecoration(
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                  ),
+                  decoration: InputDecoration(
                     labelText: 'Content',
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                    ),
+                    border: const OutlineInputBorder(),
                   ),
                   maxLines: 5,
                 ),

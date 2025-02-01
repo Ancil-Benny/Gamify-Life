@@ -4,45 +4,17 @@ import 'dart:convert';
 import 'package:sync_xy/models/task.dart';
 import 'package:sync_xy/models/note.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
-
-// Define the Reward model
-class Reward {
-  String title;
-  String description;
-  int cost;
-
-  Reward({
-    required this.title,
-    required this.description,
-    required this.cost,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'title': title,
-        'description': description,
-        'cost': cost,
-      };
-
-  factory Reward.fromJson(Map<String, dynamic> json) => Reward(
-        title: json['title'],
-        description: json['description'],
-        cost: json['cost'],
-      );
-}
+import 'package:sync_xy/models/bank_account.dart';
+import 'package:sync_xy/models/reward.dart';
 
 class AppStateProvider with ChangeNotifier {
   int _coins = 0;
   int _xp = 0;
   int _level = 1;
-  int accountBalance = 0;
-  int creditInterest = 5; // 5%
-  int lineOfCredit = 1000;
+  BankAccount bankAccount = BankAccount();
+  int lineOfCredit = 50;
   int creditTaken = 0;
-  int lineOfCreditUpgradeCost = 100;
-  int creditInterestUpgradeCost = 250;
-  int depositInterestUpgradeCost = 100;
   int depositInterest = 0;
   List<Task> _tasks = [];
   List<Note> notes = [];
@@ -56,6 +28,7 @@ class AppStateProvider with ChangeNotifier {
   final String coinsKey = 'coins';
   final String xpKey = 'xp';
   final String levelKey = 'level';
+  final String themeModeKey = 'themeMode';
 
   ThemeMode _themeMode = ThemeMode.system;
 
@@ -67,9 +40,57 @@ class AppStateProvider with ChangeNotifier {
   int get level => _level;
   List<Map<String, dynamic>> get historyLog => _historyLog;
 
+  int _lineOfCreditUpgradeCost = 100;
+  int get lineOfCreditUpgradeCost => _lineOfCreditUpgradeCost;
+
+  int _creditInterestUpgradeCost = 50;
+  int get creditInterestUpgradeCost => _creditInterestUpgradeCost;
+
+  int _depositInterestUpgradeCost = 75;
+  int get depositInterestUpgradeCost => _depositInterestUpgradeCost;
+
   void setThemeMode(ThemeMode themeMode) {
     _themeMode = themeMode;
+    _saveThemeMode();
     notifyListeners();
+  }
+
+  Future<void> _saveThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    String mode;
+    switch (_themeMode) {
+      case ThemeMode.light:
+        mode = 'light';
+        break;
+      case ThemeMode.dark:
+        mode = 'dark';
+        break;
+      case ThemeMode.system:
+        mode = 'system';
+        break;
+    }
+    await prefs.setString(themeModeKey, mode);
+  }
+
+  Future<void> _loadThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? mode = prefs.getString(themeModeKey);
+    if (mode != null) {
+      switch (mode) {
+        case 'light':
+          _themeMode = ThemeMode.light;
+          break;
+        case 'dark':
+          _themeMode = ThemeMode.dark;
+          break;
+        case 'system':
+        default:
+          _themeMode = ThemeMode.system;
+          break;
+      }
+    } else {
+      _themeMode = ThemeMode.system;
+    }
   }
 
   void resetHistoryLog() {
@@ -121,6 +142,7 @@ class AppStateProvider with ChangeNotifier {
     await _loadRewards();
     await _loadHistoryLog();
     await _loadLastCheckedDate();
+    await _loadThemeMode();
     await _loadUserData(); 
     checkAndUpdateTasks();
     await _saveLastCheckedDate(); 
@@ -152,9 +174,7 @@ class AppStateProvider with ChangeNotifier {
   // Update Reward
   void updateReward(int index, String title, String description, int cost) {
     if (index >= 0 && index < _rewards.length) {
-      _rewards[index].title = title;
-      _rewards[index].description = description;
-      _rewards[index].cost = cost;
+      _rewards[index] = Reward(title: title, description: description, cost: cost);
       _saveRewards();
       notifyListeners();
     }
@@ -205,6 +225,8 @@ class AppStateProvider with ChangeNotifier {
     await prefs.setInt(coinsKey, _coins);
     await prefs.setInt(xpKey, _xp);
     await prefs.setInt(levelKey, _level);
+    // Save bankAccount as part of user data.
+    await prefs.setString('bankAccount', jsonEncode(bankAccount.toJson()));
   }
 
   Future<void> _loadUserData() async {
@@ -212,6 +234,11 @@ class AppStateProvider with ChangeNotifier {
     _coins = prefs.getInt(coinsKey) ?? 0;
     _xp = prefs.getInt(xpKey) ?? 0;
     _level = prefs.getInt(levelKey) ?? 1;
+    // Load bankAccount from user data.
+    String? bankAccountString = prefs.getString('bankAccount');
+    if (bankAccountString != null) {
+      bankAccount = BankAccount.fromJson(jsonDecode(bankAccountString));
+    }
   }
 
   // **Updating Methods to Save User Data After Changes**
@@ -224,6 +251,13 @@ class AppStateProvider with ChangeNotifier {
 
   void addXp(int value) {
     _xp += value;
+    int threshold = 100 * (1 << (_level - 1));
+    // Level up as long as the accumulated XP exceeds the threshold.
+    while (_xp >= threshold) {
+      _xp -= threshold;
+      _level++;
+      threshold = 100 * (1 << (_level - 1)); // Recalculate for the new level.
+    }
     _saveUserData();
     notifyListeners();
   }
@@ -307,12 +341,6 @@ class AppStateProvider with ChangeNotifier {
     }
   }
 
-  Future<void> _initializeNotifications() async {
-    tz.initializeTimeZones();
-    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('app_icon');
-    final InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-  }
 
   Future<void> scheduleDailyTaskCheck() async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
@@ -452,17 +480,19 @@ class AppStateProvider with ChangeNotifier {
 
   // Bank-related methods
   void deposit(int amount) {
-    if (amount <= _coins) {
+    if (amount > 0 && amount <= _coins) {
       _coins -= amount;
-      accountBalance += amount;
+      bankAccount.accountBalance += amount;
+      _saveUserData();
       notifyListeners();
     }
   }
 
   void withdraw(int amount) {
-    if (amount <= accountBalance) {
-      accountBalance -= amount;
+    if (amount > 0 && amount <= bankAccount.accountBalance) {
+      bankAccount.accountBalance -= amount;
       _coins += amount;
+      _saveUserData();
       notifyListeners();
     }
   }
@@ -477,29 +507,48 @@ class AppStateProvider with ChangeNotifier {
 
   void increaseLineOfCredit() {
     if (_coins >= lineOfCreditUpgradeCost) {
+      bankAccount.lineOfCredit += 100; // adjust increment as necessary
       _coins -= lineOfCreditUpgradeCost;
-      lineOfCredit += 100;
-      lineOfCreditUpgradeCost *= 2;
+      _saveUserData();
       notifyListeners();
     }
   }
 
   void decreaseCreditInterest() {
-    if (creditInterest > 5 && _coins >= creditInterestUpgradeCost) {
+    if (_coins >= creditInterestUpgradeCost && bankAccount.creditInterest > 5) {
+      bankAccount.creditInterest -= 5;
       _coins -= creditInterestUpgradeCost;
-      creditInterest -= 5;
-      creditInterestUpgradeCost *= 2;
+      _saveUserData();
       notifyListeners();
+    } else {
+      // Optionally show an error that the minimum interest rate of 5% is reached
     }
   }
 
   void increaseDepositInterest() {
-    if (_coins >= depositInterestUpgradeCost && depositInterest < 100) {
+    if (_coins >= depositInterestUpgradeCost && bankAccount.depositInterest < 100) {
+      bankAccount.depositInterest += 1;
       _coins -= depositInterestUpgradeCost;
-      depositInterest += 1;
-      depositInterestUpgradeCost *= 2;
+      _saveUserData();
       notifyListeners();
+    } else {
+      // Optionally handle error if maximum is reached or insufficient coins are available.
     }
+  }
+
+  void resetATMActions() {
+    bankAccount.accountBalance = 0;
+    bankAccount.creditTaken = 0;
+    _saveUserData();
+    notifyListeners();
+  }
+
+  void resetUpgrades() {
+    bankAccount.lineOfCredit = 50;
+    bankAccount.creditInterest = 90.0;
+    bankAccount.depositInterest = 0.0;
+    _saveUserData();
+    notifyListeners();
   }
 
   // Note management methods

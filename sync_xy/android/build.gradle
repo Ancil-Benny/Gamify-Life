@@ -1,3 +1,15 @@
+buildscript {
+    ext.kotlin_version = '1.7.10'
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.0.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
 allprojects {
     repositories {
         google()
@@ -5,14 +17,15 @@ allprojects {
     }
 }
 
+// Configure a shared output directory for all subprojects.
 rootProject.buildDir = "../build"
+
+// Set each subproject’s build directory.
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
-subprojects {
-    project.evaluationDependsOn(":app")
-}
 
+// Clean task to remove build outputs.
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }

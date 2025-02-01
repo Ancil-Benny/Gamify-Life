@@ -99,7 +99,16 @@ class ResetDialog extends StatefulWidget {
 }
 
 class _ResetDialogState extends State<ResetDialog> {
-  final List<bool> resetOptions = List<bool>.filled(6, false);
+  // Index mapping:
+  // 0: Reset History Log
+  // 1: Delete All Tasks
+  // 2: Delete Rewards
+  // 3: Reset Coins
+  // 4: Reset XP and Level
+  // 5: Reset ATM Actions
+  // 6: Reset Upgrades
+  // 7: Select All
+  final List<bool> resetOptions = List<bool>.filled(8, false);
 
   @override
   Widget build(BuildContext context) {
@@ -155,6 +164,24 @@ class _ResetDialogState extends State<ResetDialog> {
               },
             ),
             CheckboxListTile(
+              title: const Text('Reset ATM Actions'),
+              value: resetOptions[5],
+              onChanged: (bool? value) {
+                setState(() {
+                  resetOptions[5] = value ?? false;
+                });
+              },
+            ),
+            CheckboxListTile(
+              title: const Text('Reset Upgrades'),
+              value: resetOptions[6],
+              onChanged: (bool? value) {
+                setState(() {
+                  resetOptions[6] = value ?? false;
+                });
+              },
+            ),
+            CheckboxListTile(
               title: const Text('Select All'),
               value: resetOptions.every((element) => element),
               onChanged: (bool? value) {
@@ -201,11 +228,11 @@ class _ResetDialogState extends State<ResetDialog> {
                 if (resetOptions[2]) appState.deleteRewards();
                 if (resetOptions[3]) appState.resetCoins();
                 if (resetOptions[4]) appState.resetXPAndLevel();
-                // If all are selected, you can optionally call appState.resetAll()
-                // or just rely on each individual reset if you'd rather keep them separate.
-
-                Navigator.of(context).pop(); // Close confirmation
-                Navigator.of(context).pop(); // Close the reset dialog
+                if (resetOptions[5]) appState.resetATMActions();
+                if (resetOptions[6]) appState.resetUpgrades();
+                // Close confirmation then the reset dialog
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
               },
               child: const Text('Confirm'),
             ),

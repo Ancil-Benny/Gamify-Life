@@ -53,8 +53,10 @@ class TasksScreen extends StatelessWidget {
                         const SizedBox(height: 20),
                         TextField(
                           controller: taskNameController,
+                          style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black), // user-entered text is black
                           decoration: InputDecoration(
                             labelText: 'Task Name',
+                            labelStyle: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color), // label uses theme color
                             prefixIcon: const Icon(Icons.task),
                             border: const OutlineInputBorder(),
                           ),
@@ -105,8 +107,10 @@ class TasksScreen extends StatelessWidget {
                               child: TextField(
                                 controller: coinsController,
                                 keyboardType: TextInputType.number,
+                                style: const TextStyle(color: Colors.black),
                                 decoration: InputDecoration(
                                   labelText: 'Coins',
+                                  labelStyle: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
                                   prefixIcon: const Icon(Icons.monetization_on),
                                   border: const OutlineInputBorder(),
                                 ),
@@ -117,8 +121,10 @@ class TasksScreen extends StatelessWidget {
                               child: TextField(
                                 controller: xpController,
                                 keyboardType: TextInputType.number,
+                                style: const TextStyle(color: Colors.black),
                                 decoration: InputDecoration(
                                   labelText: 'XP',
+                                  labelStyle: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
                                   prefixIcon: const Icon(Icons.star),
                                   border: const OutlineInputBorder(),
                                 ),
@@ -133,8 +139,10 @@ class TasksScreen extends StatelessWidget {
                                 ? "${endDate?.toLocal()}".split(' ')[0]
                                 : '',
                           ),
+                          style: const TextStyle(color: Colors.black),
                           decoration: InputDecoration(
                             labelText: 'End Date',
+                            labelStyle: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
                             prefixIcon: const Icon(Icons.calendar_today),
                             border: const OutlineInputBorder(),
                           ),
@@ -307,7 +315,9 @@ class TasksScreen extends StatelessWidget {
                     task.name,
                     style: TextStyle(
                       decoration: task.isCompleted ? TextDecoration.lineThrough : TextDecoration.none,
-                      color: task.isCompleted ? Colors.grey : Colors.black,
+                      color: task.isCompleted
+                          ? Colors.grey
+                          : Theme.of(context).textTheme.bodyLarge?.color,
                     ),
                   ),
                   trailing: Row(

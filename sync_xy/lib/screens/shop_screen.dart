@@ -31,7 +31,7 @@ class ShopScreen extends StatelessWidget {
                           const SizedBox(width: 5),
                           Consumer<AppStateProvider>(
                             builder: (context, appState, child) {
-                              return Text('${appState.coins}');
+                              return Text('${appState.bankAccount.accountBalance}');
                             },
                           ),
                         ],
@@ -71,11 +71,11 @@ class ShopScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildStatusRow('Account Balance', '${appState.accountBalance}', Icons.account_balance),
-          _buildStatusRow('Current Credit Interest', '${appState.creditInterest}%', Icons.percent),
-          _buildStatusRow('Line of Credit', '${appState.lineOfCredit}', Icons.credit_card),
-          _buildStatusRow('Credit Taken', '${appState.creditTaken}', Icons.money_off),
-          _buildStatusRow('Deposit Interest', '${appState.depositInterest}%', Icons.savings),
+          _buildStatusRow('Account Balance', '${appState.bankAccount.accountBalance}', Icons.account_balance),
+          _buildStatusRow('Current Credit Interest', '${appState.bankAccount.creditInterest}%', Icons.percent),
+          _buildStatusRow('Line of Credit', '${appState.bankAccount.lineOfCredit}', Icons.credit_card),
+          _buildStatusRow('Credit Taken', '${appState.bankAccount.creditTaken}', Icons.money_off),
+          _buildStatusRow('Deposit Interest', '${appState.bankAccount.depositInterest}%', Icons.savings),
         ],
       ),
     );
@@ -88,7 +88,9 @@ class ShopScreen extends StatelessWidget {
         children: [
           Icon(icon, color: Colors.blue),
           const SizedBox(width: 10),
-          Text('$label: $value'),
+          Flexible(
+            child: Text('$label: $value'),
+          ),
         ],
       ),
     );
@@ -155,7 +157,7 @@ class ShopScreen extends StatelessWidget {
             () {
               final amount = int.tryParse(withdrawController.text) ?? 0;
               final appState = Provider.of<AppStateProvider>(context, listen: false);
-              if (amount > 0 && amount <= appState.accountBalance) {
+              if (amount > 0 && amount <= appState.bankAccount.accountBalance) {
                 _showConfirmDialog(
                   context,
                   'Confirm Withdraw',
@@ -192,6 +194,8 @@ class ShopScreen extends StatelessWidget {
             child: TextField(
               controller: controller,
               keyboardType: TextInputType.number,
+              // Remove or comment out autofocus so keyboard appears only on tap:
+              // autofocus: true,
               decoration: InputDecoration(
                 labelText: label,
                 border: const OutlineInputBorder(),
@@ -240,7 +244,7 @@ class ShopScreen extends StatelessWidget {
             Icons.trending_down,
             'Decrease by 5%',
             () {
-              if (appState.coins >= appState.creditInterestUpgradeCost && appState.creditInterest > 5) {
+              if (appState.coins >= appState.creditInterestUpgradeCost && appState.bankAccount.creditInterest > 5) {
                 _showConfirmDialog(
                   context,
                   'Confirm Upgrade',
@@ -261,7 +265,7 @@ class ShopScreen extends StatelessWidget {
             Icons.savings,
             'Increase by 1%',
             () {
-              if (appState.coins >= appState.depositInterestUpgradeCost && appState.depositInterest < 100) {
+              if (appState.coins >= appState.depositInterestUpgradeCost && appState.bankAccount.depositInterest < 100) {
                 _showConfirmDialog(
                   context,
                   'Confirm Upgrade',
@@ -406,7 +410,12 @@ class ShopScreen extends StatelessWidget {
                           title: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(reward.title),
+                              Expanded(
+                                child: Text(
+                                  reward.title,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                               Row(
                                 children: [
                                   const Icon(Icons.monetization_on, color: Colors.amber),
@@ -457,12 +466,13 @@ class ShopScreen extends StatelessWidget {
   }
 
   void _showConfirmDialog(BuildContext context, String title, String content, VoidCallback onConfirm) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(title),
-          content: Text(content, style: const TextStyle(color: Colors.black)), // Set text color to black
+          title: Text(title, style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+          content: Text(content, style: TextStyle(color: isDark ? Colors.white : Colors.black)),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -504,7 +514,12 @@ class ShopScreen extends StatelessWidget {
           children: [
             Icon(icon, color: color),
             const SizedBox(width: 10),
-            Text(message),
+            Expanded(
+              child: Text(
+                message,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         backgroundColor: Colors.white,
